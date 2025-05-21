@@ -6,6 +6,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
+
+	"backend/database"
 )
 
 func main() {
@@ -13,6 +15,8 @@ func main() {
 	if err != nil {
 		log.Println("No .env file found, proceeding without it.")
 	}
+
+	database.Connect()
 
 	app := fiber.New()
 

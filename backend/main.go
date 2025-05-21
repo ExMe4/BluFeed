@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 
-	"backend/database"
+	"github.com/ExMe4/BluFeed/backend/database"
 )
 
 func main() {

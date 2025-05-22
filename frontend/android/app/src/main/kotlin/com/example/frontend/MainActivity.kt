@@ -1,4 +1,4 @@
-package com.example.frontend
+package com.blufeed.app
 
 import io.flutter.embedding.android.FlutterActivity
 

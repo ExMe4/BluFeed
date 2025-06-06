@@ -2,12 +2,11 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
 
 	"github.com/ExMe4/BluFeed/backend/database"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"google.golang.org/api/idtoken"
 )
 
 type GoogleIDToken struct {
@@ -19,47 +18,39 @@ type GoogleUserInfo struct {
 }
 
 func GoogleLogin(c *fiber.Ctx) error {
+	println("GoogleLogin handler hit")
 	var payload GoogleIDToken
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid token payload"})
 	}
 
-	// Sends token to Google's verification endpoint
-	resp, err := http.Get("https://oauth2.googleapis.com/tokeninfo?id_token=" + payload.Token)
-	if err != nil || resp.StatusCode != 200 {
+	const clientID = "738446309428-qiafs4t4or78om9l6uspcoleigoji4cm.apps.googleusercontent.com"
+	payloadInfo, err := idtoken.Validate(context.Background(), payload.Token, clientID)
+	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid Google ID token"})
 	}
-	defer resp.Body.Close()
 
-	var userInfo GoogleUserInfo
-	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to parse Google response"})
+	email, ok := payloadInfo.Claims["email"].(string)
+	if !ok || email == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Email not found in token"})
 	}
 
-	// Checks if user exists in DB
 	var exists bool
-	err = database.DB.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)", userInfo.Email).Scan(&exists)
+	err = database.DB.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM users WHERE email=$1)", email).Scan(&exists)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "DB query failed"})
 	}
 
 	var userID string
 	if exists {
-		// Gets existing ID
-		err = database.DB.QueryRow(context.Background(), "SELECT id FROM users WHERE email=$1", userInfo.Email).Scan(&userID)
+		err = database.DB.QueryRow(context.Background(), "SELECT id FROM users WHERE email=$1", email).Scan(&userID)
 	} else {
-		// Creates new user
 		userID = uuid.New().String()
-		_, err = database.DB.Exec(context.Background(),
-			"INSERT INTO users (id, email) VALUES ($1, $2)", userID, userInfo.Email,
-		)
+		_, err = database.DB.Exec(context.Background(), "INSERT INTO users (id, email) VALUES ($1, $2)", userID, email)
 	}
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "DB insert failed"})
 	}
 
-	return c.JSON(fiber.Map{
-		"id":    userID,
-		"email": userInfo.Email,
-	})
+	return c.JSON(fiber.Map{"id": userID, "email": email})
 }

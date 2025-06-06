@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/ExMe4/BluFeed/backend/database"
+	"github.com/ExMe4/BluFeed/backend/internal/routes"
 )
 
 func main() {
@@ -19,6 +20,8 @@ func main() {
 	database.Connect()
 
 	app := fiber.New()
+
+	routes.Register(app)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("BluFeed backend is running")

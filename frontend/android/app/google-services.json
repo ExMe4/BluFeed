@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "738446309428",
+    "project_id": "blufeed-ea156",
+    "storage_bucket": "blufeed-ea156.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:738446309428:android:327ccc441b845fb7a5f261",
+        "android_client_info": {
+          "package_name": "com.blufeed.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLaPiiJ0CLC3dEjAfN0doQDCBIyQdtyZo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

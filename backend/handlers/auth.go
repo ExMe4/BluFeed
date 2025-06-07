@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"os"
 
 	"github.com/ExMe4/BluFeed/backend/database"
 	"github.com/gofiber/fiber/v2"
@@ -24,7 +25,7 @@ func GoogleLogin(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid token payload"})
 	}
 
-	const clientID = "738446309428-qiafs4t4or78om9l6uspcoleigoji4cm.apps.googleusercontent.com"
+	clientID := os.Getenv("GCLOUD_CLIENTID")
 	payloadInfo, err := idtoken.Validate(context.Background(), payload.Token, clientID)
 	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": "Invalid Google ID token"})

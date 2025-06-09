@@ -10,4 +10,5 @@ func Register(app *fiber.App) {
 		return c.SendString("BluFeed backend is running")
 	})
 	app.Post("/api/auth/google", handlers.GoogleLogin)
+	app.Post("/api/reddit/feed", handlers.RedditFeed)
 }

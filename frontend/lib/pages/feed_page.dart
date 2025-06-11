@@ -28,11 +28,9 @@ class _FeedPageState extends State<FeedPage> {
     return Scaffold(
       key: _scaffoldKey,
       drawer: const CustomDrawer(),
-      body: accessToken == null
-          ? const Center(child: Text("Not logged in"))
-          : NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          CustomAppBar(onMenuPressed: _openDrawer),
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          CustomAppBar(onMenuPressed: () => _scaffoldKey.currentState?.openDrawer()),
         ],
         body: FutureBuilder(
           future: http.post(
@@ -41,13 +39,30 @@ class _FeedPageState extends State<FeedPage> {
             body: jsonEncode({'token': accessToken}),
           ),
           builder: (context, snapshot) {
-            if (!snapshot.hasData) {
+            if (snapshot.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            final json = jsonDecode(snapshot.data!.body);
-            final posts = json['data']['children'];
+            if (snapshot.hasError || snapshot.data == null) {
+              return Center(
+                child: Text("Error loading feed", style: TextStyle(color: Colors.red)),
+              );
+            }
 
+            final response = snapshot.data!;
+            final json = jsonDecode(response.body);
+
+            if (json['data'] == null || json['data']['children'] == null) {
+              return Center(
+                child: Text(
+                  "Unexpected response format:\n${response.body}",
+                  style: TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
+
+            final posts = json['data']['children'];
             return ListView.builder(
               itemCount: posts.length,
               itemBuilder: (context, index) {

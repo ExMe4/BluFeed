@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +24,8 @@ func RedditFeed(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create request"})
 	}
 
+	log.Println("Using Reddit Token:", body.Token)
+
 	req.Header.Set("Authorization", "Bearer "+body.Token)
 	req.Header.Set("User-Agent", "BluFeed/0.1")
 
@@ -34,6 +37,17 @@ func RedditFeed(c *fiber.Ctx) error {
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
+	log.Println("Reddit Response Status:", resp.Status)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyText, _ := io.ReadAll(resp.Body)
+		return c.Status(resp.StatusCode).JSON(fiber.Map{
+			"error":  "Reddit returned error",
+			"status": resp.StatusCode,
+			"body":   string(bodyText),
+		})
+	}
+
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to read response"})
 	}

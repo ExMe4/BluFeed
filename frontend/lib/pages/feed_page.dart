@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/custom_app_bar.dart';
@@ -39,8 +40,9 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Future<http.Response> _fetchFeed(String token) {
+    final backendUrl = dotenv.env['BACKEND_URL'] ?? '';
     return http.post(
-      Uri.parse("http://192.168.178.28:3000/api/reddit/feed"),
+      Uri.parse("$backendUrl/api/reddit/feed"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({'token': token}),
     );

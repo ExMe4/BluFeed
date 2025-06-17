@@ -22,7 +22,7 @@ class RedditAuthService {
     try {
       final result = await FlutterWebAuth.authenticate(
         url: url.toString(),
-        callbackUrlScheme: 'bluefeed',
+        callbackUrlScheme: 'blufeed',
       );
       print("Auth result: $result");
 

@@ -11,4 +11,5 @@ func Register(app *fiber.App) {
 	})
 	app.Post("/api/auth/google", handlers.GoogleLogin)
 	app.Post("/api/reddit/feed", handlers.RedditFeed)
+	app.Post("/api/reddit/token", handlers.RedditToken)
 }

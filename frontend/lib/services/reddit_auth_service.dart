@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -6,57 +7,55 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 
 class RedditAuthService {
-  final _clientId = 'YdI88tj889dfm1S_DMw51g';
-  final _redirectUri = 'blufeed://auth-callback';
 
-  Future<void> signInWithReddit(BuildContext context) async {
-    final url = Uri.https('www.reddit.com', '/api/v1/authorize.compact', {
-      'client_id': _clientId,
+  Future<void> loginToReddit(BuildContext context) async {
+    final clientId = dotenv.env['REDDIT_CLIENT_ID'];
+    final redirectUri = 'blufeed://auth-callback';
+    final authUrl = Uri.https('www.reddit.com', '/api/v1/authorize.compact', {
+      'client_id': clientId,
       'response_type': 'code',
-      'state': 'random_string',
-      'redirect_uri': _redirectUri,
+      'state': 'random_state_string',
+      'redirect_uri': redirectUri,
       'duration': 'permanent',
-      'scope': 'read identity',
+      'scope': 'identity read',
     });
+
+    print("Auth URL: $authUrl");
 
     try {
       final result = await FlutterWebAuth.authenticate(
-        url: url.toString(),
-        callbackUrlScheme: 'blufeed',
+        url: authUrl.toString(),
+        callbackUrlScheme: "blufeed",
       );
-      print("Auth result: $result");
 
       final code = Uri.parse(result).queryParameters['code'];
+      if (code == null) {
+        print("No code returned");
+        return;
+      }
 
-      if (code != null) {
-        final tokenResponse = await http.post(
-          Uri.parse('https://www.reddit.com/api/v1/access_token'),
-          headers: {
-            'Authorization':
-            'Basic ${base64Encode(utf8.encode("$_clientId:"))}',
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: {
-            'grant_type': 'authorization_code',
-            'code': code,
-            'redirect_uri': _redirectUri,
-          },
-        );
+      print("Received Reddit auth code: $code");
 
-        if (tokenResponse.statusCode == 200) {
-          final data = jsonDecode(tokenResponse.body);
-          final accessToken = data['access_token'];
+      final backendUrl = dotenv.env['BACKEND_URL'];
+      final tokenResp = await http.post(
+        Uri.parse("$backendUrl/api/reddit/token"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "code": code,
+          "redirect_uri": redirectUri,
+        }),
+      );
 
-          Provider.of<AuthProvider>(context, listen: false)
-              .setRedditToken(accessToken);
-        } else {
-          print("Token exchange failed: ${tokenResponse.body}");
-        }
+      if (tokenResp.statusCode == 200) {
+        final data = jsonDecode(tokenResp.body);
+        final accessToken = data['token'];
+        Provider.of<AuthProvider>(context, listen: false).setRedditToken(accessToken);
+        print("Token saved: $accessToken");
+      } else {
+        print("Failed to get token: ${tokenResp.body}");
       }
     } catch (e) {
-      print("Login error: $e");
+      print("Reddit OAuth failed: $e");
     }
-
-
   }
 }

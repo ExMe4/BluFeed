@@ -19,6 +19,16 @@ class _FeedPageState extends State<FeedPage> {
   Future<http.Response>? _feedFuture;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final token = Provider.of<AuthProvider>(context).redditToken;
+
+    if (token != null && token.isNotEmpty && _feedFuture == null) {
+      _feedFuture = _fetchFeed(token);
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -32,6 +42,7 @@ class _FeedPageState extends State<FeedPage> {
 
   void _maybeFetchFeed() {
     final token = Provider.of<AuthProvider>(context, listen: false).redditToken;
+    print("maybeFetchFeed called. Token: $token");
     if (token != null && token.isNotEmpty) {
       setState(() {
         _feedFuture = _fetchFeed(token);
@@ -41,6 +52,7 @@ class _FeedPageState extends State<FeedPage> {
 
   Future<http.Response> _fetchFeed(String token) {
     final backendUrl = dotenv.env['BACKEND_URL'] ?? '';
+    print("📡 Fetching feed from: $backendUrl/api/reddit/feed");
     return http.post(
       Uri.parse("$backendUrl/api/reddit/feed"),
       headers: {"Content-Type": "application/json"},
@@ -49,17 +61,43 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   Future<void> _refreshFeed() async {
-    _maybeFetchFeed();
+    print("Refreshing feed...");
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final token = authProvider.redditToken;
+
+    print("🔍 Token from AuthProvider during refresh: $token");
+
+    if (token != null && token.isNotEmpty) {
+      final newFeed = _fetchFeed(token);
+      setState(() {
+        _feedFuture = newFeed;
+      });
+      await newFeed;
+      print("Feed refreshed.");
+    } else {
+      print("Cannot refresh. No token.");
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
     final token = Provider.of<AuthProvider>(context).redditToken;
+    print("🧾 Token in build: $token");
 
     return Scaffold(
       key: _scaffoldKey,
       drawer: const CustomDrawer(),
       backgroundColor: Colors.black,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          print("FAB pressed: refreshing feed...");
+          _refreshFeed();
+        },
+        backgroundColor: Colors.white,
+        child: const Icon(Icons.refresh, color: Colors.black),
+        tooltip: 'Refresh Feed',
+      ),
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           CustomAppBar(onMenuPressed: _openDrawer),
@@ -81,11 +119,16 @@ class _FeedPageState extends State<FeedPage> {
               }
 
               if (snapshot.hasError || snapshot.data == null) {
-                return const Center(
-                  child: Text(
-                    "Error loading feed",
-                    style: TextStyle(color: Colors.red),
-                  ),
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: Text("Error loading feed", style: TextStyle(color: Colors.red)),
+                      ),
+                    ),
+                  ],
                 );
               }
 
@@ -93,23 +136,39 @@ class _FeedPageState extends State<FeedPage> {
               dynamic json;
               try {
                 json = jsonDecode(response.body);
-              } catch (e) {
-                return Center(
-                  child: Text(
-                    "Invalid JSON response:\n${response.body}",
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
+              } catch (_) {
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(
+                          "Invalid JSON response:\n${response.body}",
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               }
 
               if (json['data'] == null || json['data']['children'] == null) {
-                return Center(
-                  child: Text(
-                    "Unexpected response format:\n${response.body}",
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(
+                          "Unexpected response format:\n${response.body}",
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               }
 

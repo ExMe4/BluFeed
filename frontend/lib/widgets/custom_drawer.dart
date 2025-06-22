@@ -26,7 +26,7 @@ class CustomDrawer extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             onPressed: () {
-              RedditAuthService().signInWithReddit(context);
+              RedditAuthService().loginToReddit(context);
             },
           ),
         ],

@@ -12,4 +12,6 @@ func Register(app *fiber.App) {
 	app.Post("/api/auth/google", handlers.GoogleLogin)
 	app.Post("/api/reddit/feed", handlers.RedditFeed)
 	app.Post("/api/reddit/token", handlers.RedditToken)
+	app.Post("/api/twitter/token", handlers.TwitterToken)
+	app.Post("/api/twitter/feed", handlers.TwitterFeed)
 }

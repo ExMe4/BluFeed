@@ -1,3 +1,4 @@
+import 'package:BluFeed/utils/strings.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -19,20 +20,20 @@ class _FeedPageState extends State<FeedPage> {
   Future<http.Response>? _feedFuture;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final token = Provider.of<AuthProvider>(context).redditToken;
-
-    if (token != null && token.isNotEmpty && _feedFuture == null) {
-      _feedFuture = _fetchFeed(token);
-    }
-  }
-
-  @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _maybeFetchFeed();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.loadingFuture;
+
+      final token = authProvider.redditToken;
+      print("Token after await in initState: $token");
+
+      if (token != null && token.isNotEmpty) {
+        setState(() {
+          _feedFuture = _fetchFeed(token);
+        });
+      }
     });
   }
 
@@ -40,19 +41,9 @@ class _FeedPageState extends State<FeedPage> {
     _scaffoldKey.currentState?.openDrawer();
   }
 
-  void _maybeFetchFeed() {
-    final token = Provider.of<AuthProvider>(context, listen: false).redditToken;
-    print("maybeFetchFeed called. Token: $token");
-    if (token != null && token.isNotEmpty) {
-      setState(() {
-        _feedFuture = _fetchFeed(token);
-      });
-    }
-  }
-
   Future<http.Response> _fetchFeed(String token) {
     final backendUrl = dotenv.env['BACKEND_URL'] ?? '';
-    print("📡 Fetching feed from: $backendUrl/api/reddit/feed");
+    print("Fetching feed from: $backendUrl/api/reddit/feed");
     return http.post(
       Uri.parse("$backendUrl/api/reddit/feed"),
       headers: {"Content-Type": "application/json"},
@@ -65,7 +56,7 @@ class _FeedPageState extends State<FeedPage> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.redditToken;
 
-    print("🔍 Token from AuthProvider during refresh: $token");
+    print("Token from AuthProvider during refresh: $token");
 
     if (token != null && token.isNotEmpty) {
       final newFeed = _fetchFeed(token);
@@ -83,7 +74,7 @@ class _FeedPageState extends State<FeedPage> {
   @override
   Widget build(BuildContext context) {
     final token = Provider.of<AuthProvider>(context).redditToken;
-    print("🧾 Token in build: $token");
+    print("Token in build: $token");
 
     return Scaffold(
       key: _scaffoldKey,
@@ -105,7 +96,7 @@ class _FeedPageState extends State<FeedPage> {
         body: token == null || token.isEmpty
             ? const Center(
           child: Text(
-            "Please connect Reddit in the drawer menu.",
+            AppStrings.emptyFeed,
             style: TextStyle(color: Colors.white),
           ),
         )
@@ -125,7 +116,7 @@ class _FeedPageState extends State<FeedPage> {
                     Padding(
                       padding: EdgeInsets.all(20),
                       child: Center(
-                        child: Text("Error loading feed", style: TextStyle(color: Colors.red)),
+                        child: Text(AppStrings.errorLoadingFeed, style: TextStyle(color: Colors.red)),
                       ),
                     ),
                   ],

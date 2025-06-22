@@ -91,7 +91,7 @@ class _LoginPageState extends State<LoginPage> {
         print("Failed to get Reddit token: ${response.body}");
       }
     } catch (e) {
-      print("Reddit OAuth failed: $e");
+      print("Reddit OAuth has failed: $e");
     }
   }
 

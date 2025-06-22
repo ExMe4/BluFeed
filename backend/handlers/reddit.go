@@ -45,6 +45,7 @@ func RedditToken(c *fiber.Ctx) error {
 	authHeader := base64.StdEncoding.EncodeToString([]byte(clientID + ":" + clientSecret))
 	req.Header.Add("Authorization", "Basic "+authHeader)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "BluFeed/0.1 by ExMe4")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

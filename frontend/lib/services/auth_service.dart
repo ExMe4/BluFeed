@@ -11,52 +11,46 @@ class User {
 }
 
 class AuthService {
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+    serverClientId: dotenv.env['SERVER_CLIENT_ID'],
+  );
+
   User? _user;
 
   Future<bool> signInWithGoogle() async {
-    final GoogleSignIn _googleSignIn = GoogleSignIn(
-      scopes: ['email'],
-      serverClientId: dotenv.env['SERVER_CLIENT_ID'],
-    );
-
     try {
-      final account = await _googleSignIn.signIn();
-
+      // Try silent sign-in first
+      final account = await _googleSignIn.signInSilently();
       if (account == null) {
-        print("User cancelled Google Sign-In");
-        return false;
+        print("Silent sign-in failed, showing login screen...");
+        final manualAccount = await _googleSignIn.signIn();
+        if (manualAccount == null) return false;
+        return _handleAuth(manualAccount);
       }
-
-      final authentication = await account.authentication;
-      final idToken = authentication.idToken;
-      if (idToken == null) return false;
-
-      print("ID Token: $idToken");
-
-      // Sends the token to the backend
-      final response = await http.post(
-        Uri.parse("http://192.168.178.28:3000/api/auth/google"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"token": idToken}),
-      );
-
-      print("Status: ${response.statusCode}");
-      print("Body: ${response.body}");
-
-      if (response.statusCode != 200) return false;
-
-      final data = jsonDecode(response.body);
-      _user = User(id: data['id'], email: data['email']);
-      return true;
+      return _handleAuth(account);
     } catch (e) {
       print("Google Sign-In failed: $e");
-
-      if (e is http.ClientException) {
-        print("ClientException details: ${e.message}");
-      }
-
       return false;
     }
+  }
+
+  Future<bool> _handleAuth(GoogleSignInAccount account) async {
+    final authentication = await account.authentication;
+    final idToken = authentication.idToken;
+    if (idToken == null) return false;
+
+    final response = await http.post(
+      Uri.parse("${dotenv.env['BACKEND_URL']}/api/auth/google"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"token": idToken}),
+    );
+
+    if (response.statusCode != 200) return false;
+
+    final data = jsonDecode(response.body);
+    _user = User(id: data['id'], email: data['email']);
+    return true;
   }
 
   User? getUser() => _user;

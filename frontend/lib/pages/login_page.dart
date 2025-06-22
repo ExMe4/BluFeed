@@ -1,18 +1,49 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/strings.dart';
 import '../pages/feed_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final success = await _authService.signInWithGoogle();
+
+      if (success) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const FeedPage()),
+        );
+      }
+    });
+  }
+
+  Future<void> _handleLogin() async {
+    final success = await _authService.signInWithGoogle();
+    if (!success) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const FeedPage()),
+    );
+  }
 
   Future<void> loginToReddit(BuildContext context) async {
     final clientId = dotenv.env['REDDIT_CLIENT_ID'];
@@ -39,7 +70,6 @@ class LoginPage extends StatelessWidget {
 
       print("Received Reddit auth code: $code");
 
-      // Send to backend to exchange for access token
       final response = await http.post(
         Uri.parse("${dotenv.env['BACKEND_URL']}/api/reddit/token"),
         headers: {"Content-Type": "application/json"},
@@ -49,11 +79,14 @@ class LoginPage extends StatelessWidget {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final redditToken = data['token'];
-
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        authProvider.setRedditToken(redditToken);
+        Provider.of<AuthProvider>(context, listen: false).setRedditToken(redditToken);
 
         print("Reddit token saved: $redditToken");
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const FeedPage()),
+        );
       } else {
         print("Failed to get Reddit token: ${response.body}");
       }
@@ -64,21 +97,6 @@ class LoginPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-
-    Future<void> _handleLogin(BuildContext context) async {
-      final success = await authService.signInWithGoogle();
-      if (!success) return;
-
-      // Handle Reddit login
-      await loginToReddit(context);
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const FeedPage()),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
@@ -92,7 +110,7 @@ class LoginPage extends StatelessWidget {
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
-              onPressed: () => _handleLogin(context),
+              onPressed: _handleLogin,
             ),
             const SizedBox(height: 10),
             ElevatedButton.icon(

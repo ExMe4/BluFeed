@@ -3,8 +3,13 @@ import '../utils/strings.dart';
 
 class CustomAppBar extends StatelessWidget {
   final VoidCallback onMenuPressed;
+  final VoidCallback? onRefreshPressed;
 
-  const CustomAppBar({super.key, required this.onMenuPressed});
+  const CustomAppBar({
+    super.key,
+    required this.onMenuPressed,
+    this.onRefreshPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +50,16 @@ class CustomAppBar extends StatelessWidget {
                   onPressed: onMenuPressed,
                 ),
               ),
+              if (onRefreshPressed != null)
+                Positioned(
+                  right: 8,
+                  top: topPadding + 8,
+                  child: IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white, size: 24),
+                    tooltip: 'Refresh Feed',
+                    onPressed: onRefreshPressed,
+                  ),
+                ),
             ],
           );
         },

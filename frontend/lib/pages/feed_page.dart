@@ -84,18 +84,12 @@ class _FeedPageState extends State<FeedPage> {
       key: _scaffoldKey,
       drawer: const CustomDrawer(),
       backgroundColor: Colors.black,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          print("FAB pressed: refreshing feed...");
-          _refreshFeed();
-        },
-        backgroundColor: Colors.white,
-        tooltip: 'Refresh Feed',
-        child: const Icon(Icons.refresh, color: Colors.black),
-      ),
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
-          CustomAppBar(onMenuPressed: _openDrawer),
+          CustomAppBar(
+            onMenuPressed: _openDrawer,
+            onRefreshPressed: _refreshFeed,
+          ),
         ],
         body: token == null || token.isEmpty
             ? const Center(

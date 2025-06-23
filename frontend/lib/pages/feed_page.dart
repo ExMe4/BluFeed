@@ -26,12 +26,13 @@ class _FeedPageState extends State<FeedPage> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       await authProvider.loadingFuture;
 
-      final token = authProvider.redditToken;
-      print("Token after await in initState: $token");
+      final redditToken = authProvider.redditToken;
+      final twitterToken = authProvider.twitterToken;
 
-      if (token != null && token.isNotEmpty) {
+      if ((redditToken != null && redditToken.isNotEmpty) ||
+          (twitterToken != null && twitterToken.isNotEmpty)) {
         setState(() {
-          _feedFuture = _fetchFeed(token);
+          _feedFuture = _fetchFeed(redditToken, twitterToken);
         });
       }
     });
@@ -41,35 +42,38 @@ class _FeedPageState extends State<FeedPage> {
     _scaffoldKey.currentState?.openDrawer();
   }
 
-  Future<http.Response> _fetchFeed(String token) {
+  Future<http.Response> _fetchFeed(String? redditToken, String? twitterToken) {
     final backendUrl = dotenv.env['BACKEND_URL'] ?? '';
-    print("Fetching feed from: $backendUrl/api/reddit/feed");
+    print("Fetching combined feed from: $backendUrl/api/combined/feed");
+
     return http.post(
-      Uri.parse("$backendUrl/api/reddit/feed"),
+      Uri.parse("$backendUrl/api/combined/feed"),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({'token': token}),
+      body: jsonEncode({
+        'reddit_token': redditToken,
+        'twitter_token': twitterToken,
+      }),
     );
   }
 
   Future<void> _refreshFeed() async {
     print("Refreshing feed...");
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.redditToken;
+    final redditToken = authProvider.redditToken;
+    final twitterToken = authProvider.twitterToken;
 
-    print("Token from AuthProvider during refresh: $token");
-
-    if (token != null && token.isNotEmpty) {
-      final newFeed = _fetchFeed(token);
+    if ((redditToken != null && redditToken.isNotEmpty) ||
+        (twitterToken != null && twitterToken.isNotEmpty)) {
+      final newFeed = _fetchFeed(redditToken, twitterToken);
       setState(() {
         _feedFuture = newFeed;
       });
       await newFeed;
       print("Feed refreshed.");
     } else {
-      print("Cannot refresh. No token.");
+      print("Cannot refresh. No tokens.");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -86,8 +90,8 @@ class _FeedPageState extends State<FeedPage> {
           _refreshFeed();
         },
         backgroundColor: Colors.white,
-        child: const Icon(Icons.refresh, color: Colors.black),
         tooltip: 'Refresh Feed',
+        child: const Icon(Icons.refresh, color: Colors.black),
       ),
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
@@ -105,81 +109,49 @@ class _FeedPageState extends State<FeedPage> {
           child: FutureBuilder<http.Response>(
             future: _feedFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              if (!snapshot.hasData || snapshot.data == null) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (snapshot.hasError || snapshot.data == null) {
+              final response = snapshot.data!;
+              final json = jsonDecode(response.body);
+
+              if (json['data'] == null || json['data'] is! List) {
                 return ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  children: const [
-                    Padding(
+                  children: [
+                    const Padding(
                       padding: EdgeInsets.all(20),
                       child: Center(
-                        child: Text(AppStrings.errorLoadingFeed, style: TextStyle(color: Colors.red)),
+                        child: Text("Unexpected response format", style: TextStyle(color: Colors.red)),
                       ),
                     ),
                   ],
                 );
               }
 
-              final response = snapshot.data!;
-              dynamic json;
-              try {
-                json = jsonDecode(response.body);
-              } catch (_) {
-                return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Center(
-                        child: Text(
-                          "Invalid JSON response:\n${response.body}",
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              if (json['data'] == null || json['data']['children'] == null) {
-                return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Center(
-                        child: Text(
-                          "Unexpected response format:\n${response.body}",
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              final posts = json['data']['children'];
+              final List<dynamic> posts = json['data'];
 
               return ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount: posts.length,
                 itemBuilder: (context, index) {
-                  final post = posts[index]['data'];
-                  return ListTile(
-                    title: Text(
-                      post['title'] ?? '',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Text(
-                      "r/${post['subreddit']}",
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  );
+                  final post = posts[index];
+                  final source = post['source'];
+
+                  if (source == 'reddit') {
+                    return ListTile(
+                      title: Text(post['title'] ?? '', style: const TextStyle(color: Colors.white)),
+                      subtitle: Text("r/${post['subreddit']}", style: const TextStyle(color: Colors.grey)),
+                    );
+                  } else if (source == 'twitter') {
+                    return ListTile(
+                      title: Text(post['text'] ?? '', style: const TextStyle(color: Colors.white)),
+                      subtitle: Text("@${post['username']}", style: const TextStyle(color: Colors.blue)),
+                    );
+                  } else {
+                    return const SizedBox();
+                  }
                 },
               );
             },

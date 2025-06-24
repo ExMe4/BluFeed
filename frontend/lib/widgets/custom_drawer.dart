@@ -32,7 +32,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
               ),
             )
                 : const Text(
-              'Sync with Twitter',
+              AppStrings.syncWithTwitter,
               style: TextStyle(color: Colors.lightBlue),
             ),
             onPressed: _isLoggingIn

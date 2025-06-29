@@ -56,7 +56,7 @@ class CustomAppBar extends StatelessWidget {
                   top: topPadding + 8,
                   child: IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.white, size: 24),
-                    tooltip: 'Refresh Feed',
+                    tooltip: AppStrings.refreshFeed,
                     onPressed: onRefreshPressed,
                   ),
                 ),

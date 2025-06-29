@@ -6,4 +6,5 @@ class AppStrings {
   static const String appName = "BluFeed";
   static const String emptyFeed = "Please sync your socials in the drawer menu";
   static const String errorLoadingFeed = "Error loading feed";
+  static const String refreshFeed = "Refresh Feed";
 }

@@ -27,6 +27,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> setRedditToken(String token) async {
     _redditToken = token;
     final prefs = await SharedPreferences.getInstance();
+    print("All SharedPreferences: ${prefs.getKeys()}");
     await prefs.setString('reddit_token', token);
     notifyListeners();
   }

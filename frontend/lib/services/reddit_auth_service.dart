@@ -26,7 +26,7 @@ class RedditAuthService {
     print("Auth URL: $authUrl");
 
     try {
-      print("Starting FlutterWebAuth.authenticate...");
+      print("Reddit FlutterWebAuth started with URL: $authUrl");
       final result = await FlutterWebAuth.authenticate(
         url: authUrl.toString(),
         callbackUrlScheme: "blufeed",

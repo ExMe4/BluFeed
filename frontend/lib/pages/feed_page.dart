@@ -29,12 +29,9 @@ class _FeedPageState extends State<FeedPage> {
       final redditToken = authProvider.redditToken;
       final twitterToken = authProvider.twitterToken;
 
-      if ((redditToken != null && redditToken.isNotEmpty) ||
-          (twitterToken != null && twitterToken.isNotEmpty)) {
-        setState(() {
-          _feedFuture = _fetchFeed(redditToken, twitterToken);
-        });
-      }
+      setState(() {
+        _feedFuture = _fetchFeed(redditToken, twitterToken);
+      });
     });
   }
 
@@ -45,6 +42,8 @@ class _FeedPageState extends State<FeedPage> {
   Future<http.Response> _fetchFeed(String? redditToken, String? twitterToken) {
     final backendUrl = dotenv.env['BACKEND_URL'] ?? '';
     print("Fetching combined feed from: $backendUrl/api/combined/feed");
+    print("Reddit Token: $redditToken");
+    print("Twitter Token: $twitterToken");
 
     return http.post(
       Uri.parse("$backendUrl/api/combined/feed"),
@@ -62,23 +61,21 @@ class _FeedPageState extends State<FeedPage> {
     final redditToken = authProvider.redditToken;
     final twitterToken = authProvider.twitterToken;
 
-    if ((redditToken != null && redditToken.isNotEmpty) ||
-        (twitterToken != null && twitterToken.isNotEmpty)) {
-      final newFeed = _fetchFeed(redditToken, twitterToken);
-      setState(() {
-        _feedFuture = newFeed;
-      });
-      await newFeed;
-      print("Feed refreshed.");
-    } else {
-      print("Cannot refresh. No tokens.");
-    }
+    final newFeed = _fetchFeed(redditToken, twitterToken);
+    setState(() {
+      _feedFuture = newFeed;
+    });
+    await newFeed;
+    print("Feed refreshed.");
   }
 
   @override
   Widget build(BuildContext context) {
-    final token = Provider.of<AuthProvider>(context).redditToken;
-    print("Token in build: $token");
+    final authProvider = Provider.of<AuthProvider>(context);
+    final redditToken = authProvider.redditToken;
+    final twitterToken = authProvider.twitterToken;
+
+    print("Tokens in build: Reddit: $redditToken, Twitter: $twitterToken");
 
     return Scaffold(
       key: _scaffoldKey,
@@ -91,14 +88,7 @@ class _FeedPageState extends State<FeedPage> {
             onRefreshPressed: _refreshFeed,
           ),
         ],
-        body: token == null || token.isEmpty
-            ? const Center(
-          child: Text(
-            AppStrings.emptyFeed,
-            style: TextStyle(color: Colors.white),
-          ),
-        )
-            : RefreshIndicator(
+        body: RefreshIndicator(
           onRefresh: _refreshFeed,
           child: FutureBuilder<http.Response>(
             future: _feedFuture,
@@ -108,16 +98,35 @@ class _FeedPageState extends State<FeedPage> {
               }
 
               final response = snapshot.data!;
+              print("Feed response: ${response.statusCode}");
+              print("Feed response body: ${response.body}");
+
+              if (response.statusCode != 200) {
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(AppStrings.emptyFeed,
+                            style: TextStyle(color: Colors.red)),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
               final json = jsonDecode(response.body);
 
               if (json['data'] == null || json['data'] is! List) {
                 return ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    const Padding(
+                  children: const [
+                    Padding(
                       padding: EdgeInsets.all(20),
                       child: Center(
-                        child: Text("Unexpected response format", style: TextStyle(color: Colors.red)),
+                        child: Text("Unexpected response format",
+                            style: TextStyle(color: Colors.red)),
                       ),
                     ),
                   ],
@@ -125,6 +134,21 @@ class _FeedPageState extends State<FeedPage> {
               }
 
               final List<dynamic> posts = json['data'];
+
+              if (posts.isEmpty) {
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(AppStrings.emptyFeed,
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                );
+              }
 
               return ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -135,13 +159,17 @@ class _FeedPageState extends State<FeedPage> {
 
                   if (source == 'reddit') {
                     return ListTile(
-                      title: Text(post['title'] ?? '', style: const TextStyle(color: Colors.white)),
-                      subtitle: Text("r/${post['subreddit']}", style: const TextStyle(color: Colors.grey)),
+                      title: Text(post['title'] ?? '',
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Text("r/${post['subreddit']}",
+                          style: const TextStyle(color: Colors.grey)),
                     );
                   } else if (source == 'twitter') {
                     return ListTile(
-                      title: Text(post['text'] ?? '', style: const TextStyle(color: Colors.white)),
-                      subtitle: Text("@${post['username']}", style: const TextStyle(color: Colors.blue)),
+                      title: Text(post['text'] ?? '',
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Text("@${post['username']}",
+                          style: const TextStyle(color: Colors.blue)),
                     );
                   } else {
                     return const SizedBox();

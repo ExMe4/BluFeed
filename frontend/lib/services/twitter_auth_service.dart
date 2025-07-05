@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../pages/feed_page.dart';
 import '../providers/auth_provider.dart';
 
@@ -25,8 +26,12 @@ class TwitterAuthService {
   Future<void> loginToTwitter(BuildContext context) async {
     final clientId = dotenv.env['TWITTER_CLIENT_ID']!;
     final redirectUri = 'blufeed://twitter-callback';
+
     final codeVerifier = _generateCodeVerifier();
     final codeChallenge = _generateCodeChallenge(codeVerifier);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('twitter_code_verifier', codeVerifier);
 
     final authUrl = Uri.https('twitter.com', '/i/oauth2/authorize', {
       'response_type': 'code',
@@ -38,34 +43,48 @@ class TwitterAuthService {
       'code_challenge_method': 'S256',
     });
 
-    final result = await FlutterWebAuth.authenticate(
-      url: authUrl.toString(),
-      callbackUrlScheme: 'blufeed',
-    );
+    print("Launching Twitter auth URL: $authUrl");
 
-    final code = Uri.parse(result).queryParameters['code'];
-    if (code == null) return;
-
-    final backendUrl = dotenv.env['BACKEND_URL'];
-    final tokenResp = await http.post(
-      Uri.parse("$backendUrl/api/twitter/token"),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        "code": code,
-        "redirect_uri": redirectUri,
-        "code_verifier": codeVerifier,
-      }),
-    );
-
-    if (tokenResp.statusCode == 200) {
-      final token = jsonDecode(tokenResp.body)['access_token'];
-      Provider.of<AuthProvider>(context, listen: false).setTwitterToken(token);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const FeedPage()),
+    try {
+      final result = await FlutterWebAuth.authenticate(
+        url: authUrl.toString(),
+        callbackUrlScheme: 'blufeed',
       );
-    } else {
-      print("Twitter token failed: ${tokenResp.body}");
+
+      final code = Uri.parse(result).queryParameters['code'];
+      if (code == null) return;
+
+      final storedCodeVerifier = prefs.getString('twitter_code_verifier');
+      if (storedCodeVerifier == null) {
+        print("No stored code verifier found.");
+        return;
+      }
+
+      final backendUrl = dotenv.env['BACKEND_URL'];
+      final tokenResp = await http.post(
+        Uri.parse("$backendUrl/api/twitter/token"),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "code": code,
+          "redirect_uri": redirectUri,
+          "code_verifier": storedCodeVerifier,
+        }),
+      );
+
+      if (tokenResp.statusCode == 200) {
+        final token = jsonDecode(tokenResp.body)['access_token'];
+        await Provider.of<AuthProvider>(context, listen: false)
+            .setTwitterToken(token);
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const FeedPage()),
+        );
+      } else {
+        print("Twitter token failed: ${tokenResp.statusCode} ${tokenResp.body}");
+      }
+    } catch (e) {
+      print("Twitter login failed: $e");
     }
   }
 }

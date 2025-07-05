@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -77,6 +78,11 @@ func CombinedFeed(c *fiber.Ctx) error {
 				}
 			}
 		}
+	}
+
+	if body.RedditToken == "" && body.TwitterToken == "" {
+		log.Println("No tokens provided to combined feed.")
+		return c.Status(400).JSON(fiber.Map{"error": "No tokens provided"})
 	}
 
 	return c.JSON(fiber.Map{"data": combinedPosts})

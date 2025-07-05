@@ -1,12 +1,14 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
+	"github.com/ExMe4/BluFeed/backend/database"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -14,6 +16,7 @@ type TwitterTokenRequest struct {
 	Code         string `json:"code"`
 	CodeVerifier string `json:"code_verifier"`
 	RedirectUri  string `json:"redirect_uri"`
+	UserID       string `json:"user_id"`
 }
 
 type TwitterFeedRequest struct {
@@ -26,17 +29,21 @@ func TwitterToken(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid payload"})
 	}
 
-	data := map[string]string{
-		"grant_type":    "authorization_code",
-		"code":          body.Code,
-		"redirect_uri":  body.RedirectUri,
-		"code_verifier": body.CodeVerifier,
-		"client_id":     os.Getenv("X_CLIENT_ID"),
+	form := url.Values{}
+	form.Set("grant_type", "authorization_code")
+	form.Set("code", body.Code)
+	form.Set("redirect_uri", body.RedirectUri)
+	form.Set("code_verifier", body.CodeVerifier)
+	form.Set("client_id", os.Getenv("X_CLIENT_ID"))
+
+	req, err := http.NewRequest("POST", "https://api.twitter.com/2/oauth2/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create request"})
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	jsonData, _ := json.Marshal(data)
-
-	resp, err := http.Post("https://api.twitter.com/2/oauth2/token", "application/json", bytes.NewBuffer(jsonData))
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Token exchange failed"})
 	}
@@ -49,6 +56,23 @@ func TwitterToken(c *fiber.Ctx) error {
 
 	var tokenResp map[string]interface{}
 	json.Unmarshal(bodyBytes, &tokenResp)
+
+	accessToken, ok := tokenResp["access_token"].(string)
+	if !ok {
+		return c.Status(500).JSON(fiber.Map{"error": "Invalid token response"})
+	}
+
+	_, err = database.DB.Exec(
+		c.Context(),
+		`INSERT INTO user_tokens (user_id, twitter_token)
+		 VALUES ($1, $2)
+		 ON CONFLICT (user_id) DO UPDATE SET twitter_token = EXCLUDED.twitter_token`,
+		body.UserID,
+		accessToken,
+	)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to save token to DB"})
+	}
 
 	return c.JSON(tokenResp)
 }

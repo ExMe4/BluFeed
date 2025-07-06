@@ -83,23 +83,58 @@ func TwitterFeed(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid payload"})
 	}
 
-	req, _ := http.NewRequest("GET", "https://api.twitter.com/2/users/me/tweets", nil)
-	req.Header.Set("Authorization", "Bearer "+body.Token)
+	//Get user info
+	userReq, _ := http.NewRequest("GET", "https://api.twitter.com/2/users/me", nil)
+	userReq.Header.Set("Authorization", "Bearer "+body.Token)
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	userResp, err := client.Do(userReq)
+	if err != nil || userResp.StatusCode != 200 {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to get user info"})
+	}
+	defer userResp.Body.Close()
+
+	userBytes, _ := io.ReadAll(userResp.Body)
+	var userInfo map[string]interface{}
+	json.Unmarshal(userBytes, &userInfo)
+
+	username := "unknown"
+	if data, ok := userInfo["data"].(map[string]interface{}); ok {
+		if uname, ok := data["username"].(string); ok {
+			username = uname
+		}
+	}
+
+	// Get tweets
+	tweetReq, _ := http.NewRequest("GET", "https://api.twitter.com/2/users/me/tweets", nil)
+	tweetReq.Header.Set("Authorization", "Bearer "+body.Token)
+
+	tweetResp, err := client.Do(tweetReq)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Request failed"})
 	}
-	defer resp.Body.Close()
+	defer tweetResp.Body.Close()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return c.Status(resp.StatusCode).JSON(fiber.Map{"error": "Twitter returned error", "body": string(bodyBytes)})
+	tweetBytes, _ := io.ReadAll(tweetResp.Body)
+	if tweetResp.StatusCode != http.StatusOK {
+		return c.Status(tweetResp.StatusCode).JSON(fiber.Map{"error": "Twitter returned error", "body": string(tweetBytes)})
 	}
 
-	var jsonBody interface{}
-	json.Unmarshal(bodyBytes, &jsonBody)
+	var twitterResponse map[string]interface{}
+	json.Unmarshal(tweetBytes, &twitterResponse)
 
-	return c.JSON(jsonBody)
+	// Return tweets to frontend
+	tweets := []map[string]interface{}{}
+	if data, ok := twitterResponse["data"].([]interface{}); ok {
+		for _, t := range data {
+			if tweet, ok := t.(map[string]interface{}); ok {
+				tweets = append(tweets, map[string]interface{}{
+					"text":     tweet["text"],
+					"username": username,
+				})
+			}
+		}
+	}
+
+	return c.JSON(fiber.Map{"data": tweets})
 }

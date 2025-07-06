@@ -61,6 +61,7 @@ class TwitterAuthService {
       }
 
       final backendUrl = dotenv.env['BACKEND_URL'];
+      final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
       final tokenResp = await http.post(
         Uri.parse("$backendUrl/api/twitter/token"),
         headers: {'Content-Type': 'application/json'},
@@ -68,6 +69,7 @@ class TwitterAuthService {
           "code": code,
           "redirect_uri": redirectUri,
           "code_verifier": storedCodeVerifier,
+          "user_id": userId,
         }),
       );
 

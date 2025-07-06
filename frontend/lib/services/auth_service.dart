@@ -2,13 +2,7 @@ import 'dart:convert';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-class User {
-  final String id;
-  final String email;
-
-  User({required this.id, required this.email});
-}
+import '../models/user_model.dart';
 
 class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(

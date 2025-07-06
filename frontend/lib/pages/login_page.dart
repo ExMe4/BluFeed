@@ -39,6 +39,11 @@ class _LoginPageState extends State<LoginPage> {
     final success = await _authService.signInWithGoogle();
     if (!success) return;
 
+    final loggedInUser = _authService.getUser();
+    if (loggedInUser != null) {
+      await Provider.of<AuthProvider>(context, listen: false).setUser(loggedInUser);
+    }
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const FeedPage()),

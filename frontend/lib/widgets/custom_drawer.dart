@@ -23,9 +23,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 250,
+              width: 200,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.alternate_email, color: Colors.lightBlue),
+                icon: const Icon(Icons.account_circle_outlined, color: Colors.lightBlue),
                 label: _isLoggingInTwitter
                     ? const SizedBox(
                   width: 16,
@@ -50,7 +50,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              width: 250,
+              width: 200,
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.reddit, color: Colors.orange),
                 label: _isLoggingInReddit

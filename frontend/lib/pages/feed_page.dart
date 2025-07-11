@@ -125,7 +125,7 @@ class _FeedPageState extends State<FeedPage> {
                     Padding(
                       padding: EdgeInsets.all(20),
                       child: Center(
-                        child: Text("Unexpected response format",
+                        child: Text("Error: Posts did not load",
                             style: TextStyle(color: Colors.red)),
                       ),
                     ),

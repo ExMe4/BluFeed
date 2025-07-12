@@ -83,11 +83,12 @@ func TwitterFeed(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid payload"})
 	}
 
-	//Get user info
+	client := &http.Client{}
+
+	// Get user info
 	userReq, _ := http.NewRequest("GET", "https://api.twitter.com/2/users/me", nil)
 	userReq.Header.Set("Authorization", "Bearer "+body.Token)
 
-	client := &http.Client{}
 	userResp, err := client.Do(userReq)
 	if err != nil || userResp.StatusCode != 200 {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to get user info"})
@@ -98,15 +99,20 @@ func TwitterFeed(c *fiber.Ctx) error {
 	var userInfo map[string]interface{}
 	json.Unmarshal(userBytes, &userInfo)
 
-	username := "unknown"
-	if data, ok := userInfo["data"].(map[string]interface{}); ok {
-		if uname, ok := data["username"].(string); ok {
-			username = uname
-		}
+	userData, ok := userInfo["data"].(map[string]interface{})
+	if !ok {
+		return c.Status(500).JSON(fiber.Map{"error": "Invalid user info format"})
 	}
 
+	userID, ok := userData["id"].(string)
+	if !ok {
+		return c.Status(500).JSON(fiber.Map{"error": "User ID not found"})
+	}
+	username := userData["username"].(string)
+
 	// Get tweets
-	tweetReq, _ := http.NewRequest("GET", "https://api.twitter.com/2/users/me/tweets", nil)
+	tweetUrl := "https://api.twitter.com/2/users/" + userID + "/tweets"
+	tweetReq, _ := http.NewRequest("GET", tweetUrl, nil)
 	tweetReq.Header.Set("Authorization", "Bearer "+body.Token)
 
 	tweetResp, err := client.Do(tweetReq)
@@ -117,13 +123,16 @@ func TwitterFeed(c *fiber.Ctx) error {
 
 	tweetBytes, _ := io.ReadAll(tweetResp.Body)
 	if tweetResp.StatusCode != http.StatusOK {
-		return c.Status(tweetResp.StatusCode).JSON(fiber.Map{"error": "Twitter returned error", "body": string(tweetBytes)})
+		return c.Status(tweetResp.StatusCode).JSON(fiber.Map{
+			"error": "Twitter returned error",
+			"body":  string(tweetBytes),
+		})
 	}
 
 	var twitterResponse map[string]interface{}
 	json.Unmarshal(tweetBytes, &twitterResponse)
 
-	// Return tweets to frontend
+	// Format tweets
 	tweets := []map[string]interface{}{}
 	if data, ok := twitterResponse["data"].([]interface{}); ok {
 		for _, t := range data {

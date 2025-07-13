@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/strings.dart';
@@ -62,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
         '&scope=identity read';
 
     try {
-      final result = await FlutterWebAuth.authenticate(
+      final result = await FlutterWebAuth2.authenticate(
         url: authUrl,
         callbackUrlScheme: "blufeed",
       );

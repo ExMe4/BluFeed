@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:provider/provider.dart';
@@ -27,7 +27,7 @@ class RedditAuthService {
 
     try {
       print("Reddit FlutterWebAuth started with URL: $authUrl");
-      final result = await FlutterWebAuth.authenticate(
+      final result = await FlutterWebAuth2.authenticate(
         url: authUrl.toString(),
         callbackUrlScheme: "blufeed",
       );

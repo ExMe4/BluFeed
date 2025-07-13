@@ -26,12 +26,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- DEEP LINK intent filter for Reddit OAuth -->
+            <!-- For Reddit OAuth -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="blufeed" />
+                <data android:scheme="blufeed" android:host="auth-callback" />
+            </intent-filter>
+
+            <!-- For Twitter OAuth -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="blufeed" android:host="twitter-callback" />
             </intent-filter>
 
         </activity>

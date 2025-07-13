@@ -34,6 +34,19 @@ android {
     }
 }
 
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.evaluationDependsOn(":app")
+
+    afterEvaluate {
+        if (project.plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+            project.extensions.configure(org.jetbrains.kotlin.gradle.dsl.KotlinJvmOptions) {
+                jvmTarget = "17"
+            }
+        }
+    }
+}
+
 flutter {
     source = "../.."
 }

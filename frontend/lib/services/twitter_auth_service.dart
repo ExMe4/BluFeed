@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../pages/feed_page.dart';
 import '../providers/auth_provider.dart';
 
 class TwitterAuthService {
@@ -46,22 +45,26 @@ class TwitterAuthService {
     print("Launching Twitter auth URL: $authUrl");
 
     try {
-      final result = await FlutterWebAuth.authenticate(
+      final result = await FlutterWebAuth2.authenticate(
         url: authUrl.toString(),
         callbackUrlScheme: 'blufeed',
       );
 
       final code = Uri.parse(result).queryParameters['code'];
-      if (code == null) return;
+      print("Twitter OAuth returned code: $code");
 
       final storedCodeVerifier = prefs.getString('twitter_code_verifier');
-      if (storedCodeVerifier == null) {
-        print("No stored code verifier found.");
+      print("Stored code_verifier: $storedCodeVerifier");
+
+      final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
+      print("User ID used for backend request: $userId");
+
+      if (userId == null) {
+        print("ERROR: No user ID found, cannot proceed with token exchange.");
         return;
       }
 
       final backendUrl = dotenv.env['BACKEND_URL'];
-      final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
       final tokenResp = await http.post(
         Uri.parse("$backendUrl/api/twitter/token"),
         headers: {'Content-Type': 'application/json'},
@@ -74,19 +77,18 @@ class TwitterAuthService {
       );
 
       if (tokenResp.statusCode == 200) {
-        final token = jsonDecode(tokenResp.body)['access_token'];
-        await Provider.of<AuthProvider>(context, listen: false)
-            .setTwitterToken(token);
+        final body = jsonDecode(tokenResp.body);
+        final token = body['access_token'];
+        print("Received Twitter token from backend: $token");
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const FeedPage()),
-        );
+        await Provider.of<AuthProvider>(context, listen: false).setTwitterToken(token);
       } else {
         print("Twitter token failed: ${tokenResp.statusCode} ${tokenResp.body}");
       }
-    } catch (e) {
+    } catch (e, stack) {
       print("Twitter login failed: $e");
+      print(stack);
     }
+
   }
 }

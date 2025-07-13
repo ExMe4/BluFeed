@@ -44,8 +44,14 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> setTwitterToken(String token) async {
     _twitterToken = token;
+    print("Setting Twitter token in memory: $token");
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('twitter_token', token);
+
+    final stored = prefs.getString('twitter_token');
+    print("Twitter token stored in SharedPreferences: $stored");
+
     notifyListeners();
   }
 

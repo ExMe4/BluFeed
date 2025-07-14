@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,6 +63,10 @@ func TwitterToken(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Invalid token response"})
 	}
 
+	if body.UserID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Missing user_id"})
+	}
+
 	_, err = database.DB.Exec(
 		c.Context(),
 		`INSERT INTO user_tokens (user_id, twitter_token)
@@ -73,6 +78,9 @@ func TwitterToken(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to save token to DB"})
 	}
+
+	log.Printf("Successfully exchanged token, storing in DB for user_id: %s", body.UserID)
+	log.Printf("Access Token: %s", accessToken)
 
 	return c.JSON(tokenResp)
 }
